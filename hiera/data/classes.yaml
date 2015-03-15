@@ -1,0 +1,63 @@
+---
+# TODO: keystonerc file
+mysql_classes:
+  - mysql::server
+
+horizon_classes:
+  - horizon
+
+memcached_classes:
+  - memcached
+
+keystone_classes:
+  - keystone
+  - keystone::endpoint
+#  - keystone_extras
+  - keystone::roles::admin
+  - keystone::db::mysql
+
+glance_control_classes:
+  - glance::api
+  - glance::registry
+  - glance::db::mysql
+  - glance::keystone::auth
+  - glance::backend::file
+
+rabbitmq_classes:
+  - rabbitmq
+
+neutron_core_classes:
+  - neutron
+
+neutron_control_classes:
+  - neutron::server
+  - neutron::server::notifications
+  - neutron::agents::metadata
+  - neutron::agents::l3
+  - neutron::agents::dhcp
+  - neutron::db::mysql
+  - neutron::keystone::auth
+
+neutron_ml2_classes:
+  - neutron::plugins::ml2
+  - neutron::agents::ml2::ovs
+
+nova_core_classes:
+  - nova
+
+nova_neutron_classes:
+  - nova::network::neutron
+
+nova_control_classes:
+  - nova::api
+  - nova::conductor
+  - nova::db::mysql
+  - nova::keystone::auth
+  - nova::scheduler
+
+nova_compute_classes:
+  - nova::compute
+  - nova::compute::libvirt
+
+nova_neutron_compute_classes:
+  - nova::compute::neutron

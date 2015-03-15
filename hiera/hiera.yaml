@@ -1,0 +1,11 @@
+---
+:backends:
+  - yaml
+:hierarchy:
+  - defaults
+  - user
+  - classes
+  - common
+  - global
+:yaml:
+  :datadir: /vagrant/hiera/data
