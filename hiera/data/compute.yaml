@@ -1,2 +1,0 @@
-neutron::agents::ml2::ovs::bridge_uplinks: []
-neutron::agents::ml2::ovs::bridge_mappings: []

@@ -1,0 +1,23 @@
+---
+:infra:
+- mysql
+- rabbitmq
+:control:
+- keystone
+- glance_control
+- nova
+- nova_control
+- nova_neutron
+- horizon
+- swift_control
+:network:
+- neutron
+- neutron_control
+- neutron_ml2
+:compute:
+- nova
+- nova_compute
+- nova_neutron
+- nova_neutron_compute
+- neutron
+- neutron_ml2

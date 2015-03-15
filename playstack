@@ -1,0 +1,224 @@
+#!/usr/bin/env ruby
+require 'configatron'
+require 'erb'
+require 'fileutils'
+require 'optparse'
+require 'ostruct'
+require 'securerandom'
+require 'yaml'
+
+BASE  = '/usr/local/playstack/'
+#BASE = '/home/gil/rh/openstack/projects/gildub/playstack/'
+
+class Optparse
+  def self.parse(args)
+    options = OpenStruct.new
+    options.false = false
+    options.answerfile = ''
+    options.ip_admin = ''
+    options.ip_internal = ''
+    options.ip_public = ''
+    options.password = ''
+    options.keep = ''
+
+    opt_parser = OptionParser.new do |opts|
+      opts.banner = "Usage: #{__FILE__} [OPTIONS]"
+
+      opts.separator "  OPTIONS:"
+
+      opts.on('-dPASSWD', '--dev=PASSWD', "Use single password. Overrides answer file if provided") do |p|
+        options.password = p
+      end
+
+      opts.on('--answer=FILENAME', 'Use provided answer file') do |f|
+        options.answerfile = f
+      end
+
+      opts.on('-aIP', '--admin=IP', 'Admin IP. Overrides answer file if provided') do |ip|
+        options.ip_admin = ip
+      end
+
+      opts.on('-iIP', '--internal=IP', 'Internal IP. Overrides answer file if provided') do |ip|
+        options.ip_internal = ip
+      end
+
+      opts.on('-pIP', '--public=IP', 'Public IP. Overrides answer file if provided') do |ip|
+        options.ip_public = ip
+      end
+
+      opts.on('-k', '--keep=FILE', 'Dump parameters to FILE') do |f|
+        options.keep = f
+      end
+
+      opts.on_tail('-h', '--help', 'Show this message') do
+        puts opts
+        exit
+      end
+    end
+    opt_parser.parse!(args)
+    options
+  end
+end
+
+class Node
+  def initialize(name, components)
+    @name = name
+    @components = components
+  end
+
+  def to_puppet
+    str = "node /#{@name}/ {\n"
+    str << @components
+    str << "}\n\n"
+  end
+end
+
+class Roles
+  def self.to_puppet(elements)
+    str = ''
+    elements.each do |e|
+       str << "  role {'#{e}':}\n"
+    end
+    str
+  end
+end
+
+class Playstack
+  def self.fatal(str)
+    puts ('FATAL: ' + str)
+    exit
+  end
+
+  def self.gen_erb(src, dst)
+    common = ERB.new(File.read(src))
+    File.open(dst, 'w') do |f|
+      f << common.result(binding)
+    end
+  end
+
+  def self.get_yaml(filename)
+    fatal("Cannot open #{filename}") unless filename && File.exist?(filename)
+    YAML.load(File.read(filename))
+  end
+
+  def self.verify(file)
+    File.readlines(file).each do |line|
+      fatal("missing variable => #{line}") if line =~ /configatron/
+    end
+  end
+
+  def config_load(params)
+    configatron.configure_from_hash(params)
+  end
+
+  def config_add_passwords
+    configatron.os.admin.password = secret
+    configatron.os.admin.token = secret
+    configatron.os.dbms.root.password = secret
+    configatron.os.glance.password = secret
+    configatron.os.horizon.secret_key = secret
+    configatron.os.keystone.password = secret
+    configatron.os.neutron.metadata.shared_secret = secret
+    configatron.os.neutron.password = secret
+    configatron.os.nova.password = secret
+    configatron.os.rabbitmq.password = 'guest'
+  end
+
+  def initialize(options)
+    @password = options.password
+
+    unless options.answerfile == ''
+      configfile = options.answerfile
+    else
+      configfile = BASE + 'config/osconfig.yaml'
+    end
+
+    # Create target structure
+    FileUtils.cp_r(BASE + 'target/hiera', '.')
+    FileUtils.cp_r(BASE + 'target/manifests', '.')
+
+    config_load(Playstack.get_yaml(configfile))
+
+    configatron.ip.admin = options.ip_admin if options.ip_admin != ''
+    configatron.ip.internal = options.ip_internal if options.ip_internal != ''
+    configatron.ip.public = options.ip_public if options.ip_public != ''
+
+    Playstack.fatal('Admin IP is missing!') if configatron.ip.admin == ''
+    Playstack.fatal('Internal IP is missing!') if configatron.ip.internal == ''
+    Playstack.fatal('Public IP is missing!') if configatron.ip.public == ''
+
+    config_add_passwords
+
+    Playstack.gen_erb(BASE + 'templates/hiera/data/common.yaml.erb','hiera/data/common.yaml')
+    Playstack.verify('hiera/data/common.yaml')
+  end
+
+  def load_profiles
+    profiles = {}
+    profiles_ref = Playstack.get_yaml(BASE + 'config/profiles_reference.yaml')
+    profiles_ref.each do |profile, roles|
+      keep = []
+      configatron.os.include.each do |inc|
+        roles.each { |e| keep << e if e =~ (/^#{inc}/) }
+      end
+      profiles.merge!( { profile => keep } )
+    end
+    configatron.scenario.profiles.configure_from_hash(profiles)
+  end
+
+  def gen_puppet_site
+    nodes = []
+    configatron.scenario.nodes.each do |node, roles|
+      all = []
+      roles.each do |role|
+        all << configatron.scenario.profiles[role]
+
+        # Add external bridge (br-ex) only to this node
+        if role == 'network'
+          Playstack.gen_erb(BASE + 'templates/hiera/data/network-node.yaml.erb', "hiera/data/#{node}.yaml")
+        end
+      end
+      nodes << Node.new(node, Roles.to_puppet(all.flatten.uniq))
+    end
+
+    File.open('manifests/site.pp', 'w') do |file|
+      nodes.each do |node|
+        file << node.to_puppet
+      end
+    end
+  end
+
+  def gen_hiera_conf
+    @target = `pwd`.chop + '/'
+    Playstack.gen_erb(BASE + 'templates/hiera/hiera.yaml.erb', 'hiera/hiera.yaml')
+  end
+
+  def save_answer_file
+    File.open('answer.yaml', 'w') do |f| f << YAML.dump(configatron.to_h) end
+  end
+
+  def secret
+    @password.empty? ? SecureRandom.hex : @password
+  end
+
+  def config_dump
+    config = configatron.inspect
+    str = ''
+    config.each_line do |f|
+      str << f.gsub(/configatron\./,'')
+    end
+    str + "\n"
+  end
+
+  def config_to_file(filename)
+    File.open(filename, 'w') { |f| f << config_dump }
+  end
+end
+
+options = Optparse.parse(ARGV)
+player = Playstack.new(options)
+player.load_profiles
+player.gen_puppet_site
+player.save_answer_file
+player.gen_hiera_conf
+player.config_to_file(options.keep) if options.keep != ''

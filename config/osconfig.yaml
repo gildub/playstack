@@ -1,0 +1,76 @@
+---
+# IPs and passwords are provided at runtime
+:scenario:
+  :nodes:
+    :control1:
+    - infra
+    - control
+    - network
+    :compute1:
+    - compute
+    :compute2:
+    - compute
+    :aio:
+    - infra
+    - control
+    - network
+    - compute
+:os:
+  :include:
+  - ipa
+  - glance
+  - horizon
+  - keystone
+  - mysql
+  - neutron
+  - nova
+  - rabbitmq
+  :debug: false
+  :ssl: false
+  :verbose: true
+  :admin:
+    :email: admin@example.com
+  :glance:
+    :backend:
+      :file: "/var/lib/glance/images/"
+  :keystone:
+    :service_name: keystone
+  #  :service_name: httpd
+  :neutron:
+    :agents:
+      :ml2:
+        :ovs:
+          :bridge_mappings:
+          - default:br-ex
+          :bridge_uplinks:
+          - br-ex:eth0
+          :enable_tunneling: true
+          :l2_population: false
+          :local_ip: "%{ipaddress_eth4}"
+          :tunnel_types:
+          - vxlan
+          :vxlan_udp_port: '4789'
+    :plugins:
+      :ml2:
+        :enable_security_group: true
+        :flat_networks:
+        - "*"
+        :mechanism_drivers:
+        - openvswitch
+        :network_vlan_ranges: []
+        :sriov_agent_required: false
+        :supported_pci_vendor_devs: []
+        :tenant_network_types:
+        - vxlan
+        :tunnel_id_ranges: []
+        :type_drivers:
+        - vxlan
+        :vni_ranges:
+        - 10:100
+#        :vxlan_group: ''
+  :rabbitmq:
+    :user: guest
+:ip:
+  :admin: ''
+  :internal: ''
+  :public: ''

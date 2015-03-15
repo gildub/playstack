@@ -3,9 +3,8 @@
   - yaml
 :hierarchy:
   - defaults
-  - user
-  - classes
+  - "%{hostname}"
   - common
-  - global
+  - classes
 :yaml:
-  :datadir: /vagrant/hiera/data
+  :datadir: <%= @target %>hiera/data

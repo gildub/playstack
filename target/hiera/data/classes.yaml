@@ -5,16 +5,15 @@ mysql_classes:
 
 horizon_classes:
   - horizon
-
-memcached_classes:
   - memcached
 
 keystone_classes:
   - keystone
   - keystone::endpoint
-#  - keystone_extras
+#  - keystone_extra
   - keystone::roles::admin
   - keystone::db::mysql
+#  - keystone::wsgi::apache
 
 glance_control_classes:
   - glance::api
@@ -26,23 +25,23 @@ glance_control_classes:
 rabbitmq_classes:
   - rabbitmq
 
-neutron_core_classes:
+neutron_classes:
   - neutron
 
 neutron_control_classes:
+  - neutron::db::mysql
+  - neutron::keystone::auth
   - neutron::server
   - neutron::server::notifications
   - neutron::agents::metadata
   - neutron::agents::l3
   - neutron::agents::dhcp
-  - neutron::db::mysql
-  - neutron::keystone::auth
 
 neutron_ml2_classes:
   - neutron::plugins::ml2
   - neutron::agents::ml2::ovs
 
-nova_core_classes:
+nova_classes:
   - nova
 
 nova_neutron_classes:
