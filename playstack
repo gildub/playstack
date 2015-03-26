@@ -4,17 +4,20 @@ require 'erb'
 require 'fileutils'
 require 'optparse'
 require 'ostruct'
+require 'pathname'
 require 'securerandom'
 require 'yaml'
 
-BASE  = '/usr/local/playstack/'
-#BASE = '/home/gil/rh/openstack/projects/gildub/playstack/'
+BASE  = File.dirname(__FILE__)
+
+ROLES = [ :infra, :controllers, :dashboard, :networker, :compute ]
 
 class Optparse
   def self.parse(args)
     options = OpenStruct.new
     options.false = false
     options.answerfile = ''
+    options.includes = []
     options.ip_admin = ''
     options.ip_internal = ''
     options.ip_public = ''
@@ -46,6 +49,10 @@ class Optparse
         options.ip_public = ip
       end
 
+      opts.on('--include=LIST', 'Include only') do |list|
+        options.includes = list.split(',')
+      end
+
       opts.on('-k', '--keep=FILE', 'Dump parameters to FILE') do |f|
         options.keep = f
       end
@@ -60,145 +67,232 @@ class Optparse
   end
 end
 
-class Node
-  def initialize(name, components)
-    @name = name
-    @components = components
-  end
-
-  def to_puppet
-    str = "node /#{@name}/ {\n"
-    str << @components
-    str << "}\n\n"
-  end
-end
-
-class Roles
-  def self.to_puppet(elements)
-    str = ''
-    elements.each do |e|
-       str << "  role {'#{e}':}\n"
-    end
-    str
-  end
-end
-
-class Playstack
-  def self.fatal(str)
+module Helpers
+  def fatal(str)
     puts ('FATAL: ' + str)
     exit
   end
 
-  def self.gen_erb(src, dst)
-    common = ERB.new(File.read(src))
-    File.open(dst, 'w') do |f|
-      f << common.result(binding)
+  def erb_process_tree(dirname)
+    Dir.foreach(dirname) do |dir|
+      dirpath = File.join(dirname, dir)
+      if File.directory?(dirpath) then
+        if dir != '.' && dir != '..' then
+          erb_process_tree(dirpath)
+        end
+      elsif dirpath =~ /\.erb$/
+        result = ERB.new(File.read(dirpath))
+        file = dirpath.gsub(/\.erb/,'')
+        File.open(file, 'w') do |f|
+          f << result.result(binding)
+        end
+        File.delete(dirpath)
+      end
     end
   end
 
-  def self.get_yaml(filename)
+  def verify_tree(dirname)
+    Dir.foreach(dirname) do |dir|
+      dirpath = File.join(dirname, dir)
+      if File.directory?(dirpath) then
+        if dir != '.' && dir != '..' then
+          verify_tree(dirpath)
+        end
+      else
+        File.readlines(dirpath).each do |line|
+          fatal("missing variable => #{line}") if line =~ /configatron/
+        end
+      end
+    end
+  end
+
+  def get_yaml(filename)
     fatal("Cannot open #{filename}") unless filename && File.exist?(filename)
     YAML.load(File.read(filename))
   end
+end
 
-  def self.verify(file)
-    File.readlines(file).each do |line|
-      fatal("missing variable => #{line}") if line =~ /configatron/
+class HieraData
+  attr_reader :target, :template_net_node_path
+
+  def initialize(target)
+    @target = target
+    @template_net_node_path = File.join(BASE, 'templates', 'networker-node.yaml.erb')
+
+    FileUtils.cp_r(File.join(BASE, 'hiera'), '.')
+  end
+end
+
+class Node
+  attr_reader :fw, :data, :name, :profiles, :roles
+
+  def initialize(name, roles, profiles)
+    @name = name
+    @fw = {}
+    @data = {}
+    @profiles = profiles
+    @roles = roles
+  end
+
+  def add_data(data)
+    @data.merge!(data)
+  end
+
+  def add_fw(data)
+    @fw.merge!(data)
+  end
+
+  def to_manifest
+    str = StringIO.open do |s|
+      s.puts "node /#{@name}/ {"
+      @profiles.each do |e|
+        s.puts "  role {'#{e}':}"
+      end
+      s.puts "}\n"
+      s.string
     end
   end
+end
 
-  def config_load(params)
-    configatron.configure_from_hash(params)
+class Site
+  attr_reader :nodes, :target
+
+  def initialize(target)
+    @target = target
+    @nodes = []
+
+    FileUtils.cp_r(File.join(BASE, 'manifests'), @target)
   end
 
-  def config_add_passwords
-    configatron.os.admin.password = secret
-    configatron.os.admin.token = secret
-    configatron.os.dbms.root.password = secret
-    configatron.os.glance.password = secret
-    configatron.os.horizon.secret_key = secret
-    configatron.os.keystone.password = secret
-    configatron.os.neutron.metadata.shared_secret = secret
-    configatron.os.neutron.password = secret
-    configatron.os.nova.password = secret
-    configatron.os.rabbitmq.password = 'guest'
+  def add_node(node)
+    @nodes << node
   end
+
+  def nodes_to_file(filename)
+    File.open(File.join(@target, filename), 'w') do |file|
+      @nodes.each { |node| file << node.to_manifest }
+    end
+  end
+end
+
+class Playstack
+  include Helpers
 
   def initialize(options)
+    openstack_ref = get_yaml(File.join(BASE, 'config/openstack.yaml'))
+    scenario_ref  = get_yaml(File.join(BASE, 'config/scenario.yaml'))
+
+    @firewall_ref = get_yaml(File.join(BASE, 'config/firewall.yaml'))
+    @scenes_ref  = get_yaml(File.join(BASE, 'config/scenes.yaml'))
+
     @password = options.password
 
     unless options.answerfile == ''
-      configfile = options.answerfile
+      configatron.configure_from_hash(get_yaml(options.answerfile))
+      set_passwords unless options.password.empty?
     else
-      configfile = BASE + 'config/osconfig.yaml'
+      configatron.scenario.configure_from_hash(scenario_ref)
+      configatron.openstack.configure_from_hash(openstack_ref)
+      set_passwords
     end
 
-    # Create target structure
-    FileUtils.cp_r(BASE + 'target/hiera', '.')
-    FileUtils.cp_r(BASE + 'target/manifests', '.')
+    configatron.scenario.ip.admin = options.ip_admin if options.ip_admin != ''
+    configatron.scenario.ip.internal = options.ip_internal if options.ip_internal != ''
+    configatron.scenario.ip.public = options.ip_public if options.ip_public !=''
 
-    config_load(Playstack.get_yaml(configfile))
+    fatal('Admin IP is missing!') if configatron.scenario.ip.admin == ''
+    fatal('Internal IP is missing!') if configatron.scenario.ip.internal == ''
+    fatal('Public IP is missing!') if configatron.scenario.ip.public == ''
 
-    configatron.ip.admin = options.ip_admin if options.ip_admin != ''
-    configatron.ip.internal = options.ip_internal if options.ip_internal != ''
-    configatron.ip.public = options.ip_public if options.ip_public != ''
+    configatron.scenario.include = options.includes unless options.includes.empty?
 
-    Playstack.fatal('Admin IP is missing!') if configatron.ip.admin == ''
-    Playstack.fatal('Internal IP is missing!') if configatron.ip.internal == ''
-    Playstack.fatal('Public IP is missing!') if configatron.ip.public == ''
+    @data = HieraData.new('hiera')
+    @site = Site.new('manifests')
 
-    config_add_passwords
+    load_roles
 
-    Playstack.gen_erb(BASE + 'templates/hiera/data/common.yaml.erb','hiera/data/common.yaml')
-    Playstack.verify('hiera/data/common.yaml')
+    configatron.scenario.nodes.each do |node, roles|
+      roles_all = []
+      roles.each do |role|
+        roles_all << configatron.scenario.profiles[role]
+      end
+      @site.add_node(Node.new(node, roles, roles_all.flatten.uniq))
+    end
   end
 
-  def load_profiles
+  def set_passwords
+    configatron.openstack.admin.password = secret
+    configatron.openstack.admin.token = secret
+    configatron.openstack.dbms.root.password = secret
+    configatron.openstack.glance.password = secret
+    configatron.openstack.horizon.secret_key = secret
+    configatron.openstack.keystone.password = secret
+    configatron.openstack.neutron.metadata.shared_secret = secret
+    configatron.openstack.neutron.password = secret
+    configatron.openstack.nova.password = secret
+    configatron.openstack.rabbitmq.password = 'guest'
+  end
+
+  def load_roles
     profiles = {}
-    profiles_ref = Playstack.get_yaml(BASE + 'config/profiles_reference.yaml')
-    profiles_ref.each do |profile, roles|
-      keep = []
-      configatron.os.include.each do |inc|
-        roles.each { |e| keep << e if e =~ (/^#{inc}/) }
+    @scenes_ref.each do |role, roles|
+      fatal("Unknown Role symbol: #{role}") unless ROLES.include?(role)
+      included_profiles = []
+      configatron.scenario.include.each do |inc|
+        roles.each { |e| included_profiles << e if e =~ (/^#{inc}/) }
       end
-      profiles.merge!( { profile => keep } )
+      profiles.merge!( { role => included_profiles } )
     end
     configatron.scenario.profiles.configure_from_hash(profiles)
   end
 
-  def gen_puppet_site
-    nodes = []
-    configatron.scenario.nodes.each do |node, roles|
-      all = []
-      roles.each do |role|
-        all << configatron.scenario.profiles[role]
+  def game
+    @site.nodes.each do |node|
+      node.roles.each do |role|
 
-        # Add external bridge (br-ex) only to this node
-        if role == 'network'
-          Playstack.gen_erb(BASE + 'templates/hiera/data/network-node.yaml.erb', "hiera/data/#{node}.yaml")
+        # Add firewall rules for tunneling
+        if role == 'networker' || role == 'compute'
+          if configatron.openstack.neutron.has_key?(:tunnel)
+            node.add_fw( 'tunnel' =>  @firewall_ref['tunnel'][configatron.openstack.neutron.tunnel] )
+          end
+        end
+
+        # Add external bridge (br-ex)
+        if role == 'networker'
+          node.add_data(YAML.load(File.read(@data.template_net_node_path)))
         end
       end
-      nodes << Node.new(node, Roles.to_puppet(all.flatten.uniq))
+
+    # Firewall rules per node
+      nodes_fw_rules = {}
+      node.profiles.each do |profile|
+        nodes_fw_rules.merge!( profile => @firewall_ref[profile] ) if @firewall_ref.include?(profile)
+      end
+      node.add_fw(nodes_fw_rules)
     end
 
-    File.open('manifests/site.pp', 'w') do |file|
-      nodes.each do |node|
-        file << node.to_puppet
+    @site.nodes_to_file('site.pp')
+
+    # Hiera hostname
+    @site.nodes.each do |node|
+      data = node.data
+      data.merge!( 'security::firewall' => node.fw )
+      File.open(File.join(@data.target, "#{node.name}.yaml.erb"), 'w') do |file|
+        file << YAML.dump(data)
       end
     end
+
+    erb_process_tree(@data.target)
+    erb_process_tree(@site.target)
   end
 
-  def gen_hiera_conf
-    @target = `pwd`.chop + '/'
-    Playstack.gen_erb(BASE + 'templates/hiera/hiera.yaml.erb', 'hiera/hiera.yaml')
+  def verify
+    verify_tree(@data.target)
+    verify_tree(@site.target)
   end
 
-  def save_answer_file
-    File.open('answer.yaml', 'w') do |f| f << YAML.dump(configatron.to_h) end
-  end
-
-  def secret
-    @password.empty? ? SecureRandom.hex : @password
+  def answer_file_save
+    File.open('answer.yaml', 'w') { |f| f << YAML.dump(configatron.to_h) }
   end
 
   def config_dump
@@ -210,15 +304,17 @@ class Playstack
     str + "\n"
   end
 
-  def config_to_file(filename)
-    File.open(filename, 'w') { |f| f << config_dump }
+  def secret
+    @password.empty? ? SecureRandom.hex : @password
   end
 end
 
 options = Optparse.parse(ARGV)
+
 player = Playstack.new(options)
-player.load_profiles
-player.gen_puppet_site
-player.save_answer_file
-player.gen_hiera_conf
-player.config_to_file(options.keep) if options.keep != ''
+player.game
+player.verify
+player.answer_file_save
+if options.keep != ''
+  File.open(options.keep, 'w') { |f| f << player.config_dump }
+end

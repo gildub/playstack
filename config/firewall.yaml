@@ -1,0 +1,113 @@
+---
+rabbitmq:
+  dport:
+  - '5672'
+  name: 001 AMQP incoming
+  proto: tcp
+ceilometer_api:
+  dport:
+  - '8777'
+  name: 001 Ceilometer incoming
+  proto: tcp
+ceph_api:
+  dport:
+  - '6789'
+  - 6800-6810
+  name: 001 Ceph Mon & OSD incoming
+  proto: tcp
+cinder_api:
+  dport:
+  - '8776'
+  name: 001 Cinder volume incoming
+  proto: tcp
+galera:
+  dport:
+  - '3306'
+  - '9200'
+  - '4567'
+  - '4568'
+  - '4444'
+  name: '001 Galera: mysql, monitor, galera, galera_ist, galera_sst incoming'
+  proto: tcp
+glance_api:
+  dport:
+  - '9191'
+  - '9292'
+  name: 001 Glance incoming
+  proto: tcp
+heat_api:
+  dport:
+  - '8000'
+  - '8003'
+  - '8004'
+  name: 001 Heat, CFN & Cloudwatch API incoming
+  proto: tcp
+horizon:
+  dport:
+  - '80'
+  - '443'
+  name: 001 Horizon incoming
+  proto: tcp
+keystone_api:
+  dport:
+  - '5000'
+  - '35357'
+  name: 001 Keystone API, admin incoming
+  proto: tcp
+memcached:
+  dport:
+  - '11211'
+  name: 001 Memcached incoming
+  proto: tcp
+mysql:
+  dport:
+  - '3306'
+  name: 001 Mysql incoming
+  proto: tcp
+neutron_api:
+  dport:
+  - '9696'
+  name: 001 Neutron incoming
+  proto: tcp
+nosql:
+  dport:
+  - '27017'
+  name: 001 Nosql incoming
+  proto: tcp
+nova_api:
+  dport:
+  - '3260'
+  - '8773'
+  - '8774'
+  - '8775'
+  name: 001 Nova volume, EC2 API, Nova API, Metadata Proxy incoming
+  proto: tcp
+nova_api_novncproxy:
+  dport:
+  - '6080'
+  name: 001 Novncproxy incoming
+  proto: tcp
+nova_api_xvpvncproxy:
+  dport:
+  - '6081'
+  name: 001 Xvpvncproxy incoming
+  proto: tcp
+nova_compute:
+  dport:
+  - 5900-5999
+  name: 001 VNC incoming
+  proto: tcp
+swift_api:
+  dport:
+  - '8080'
+  name: 001 Swift incoming
+  proto: tcp
+tunnel:
+  gre:
+    name: 001 Tunnel GRE
+    proto: gre
+  vxlan:
+    dport:
+    - '4789'
+    name: 001 Tunnel VXLAN incoming
+    proto: tcp

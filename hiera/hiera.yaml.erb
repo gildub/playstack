@@ -5,6 +5,6 @@
   - defaults
   - "%{hostname}"
   - common
-  - classes
+  - profiles
 :yaml:
-  :datadir: <%= @target %>hiera/data
+  :datadir: <%= File.join(Pathname.pwd, @data.target) %>

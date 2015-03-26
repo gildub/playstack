@@ -1,13 +1,9 @@
 ---
-# TODO: keystonerc file
-mysql_classes:
-  - mysql::server
-
-horizon_classes:
+profile::horizon:
   - horizon
   - memcached
 
-keystone_classes:
+profile::keystone_api:
   - keystone
   - keystone::endpoint
 #  - keystone_extra
@@ -15,48 +11,53 @@ keystone_classes:
   - keystone::db::mysql
 #  - keystone::wsgi::apache
 
-glance_control_classes:
+profile::glance_api:
   - glance::api
   - glance::registry
   - glance::db::mysql
   - glance::keystone::auth
   - glance::backend::file
 
-rabbitmq_classes:
-  - rabbitmq
+profile::mysql:
+  - mysql::server
 
-neutron_classes:
+profile::neutron_agents:
   - neutron
+  - neutron::agents::metadata
+  - neutron::agents::l3
+  - neutron::agents::dhcp
+  - neutron::plugins::ml2
+  - neutron::agents::ml2::ovs
 
-neutron_control_classes:
+profile::neutron_api:
+  - neutron
   - neutron::db::mysql
   - neutron::keystone::auth
   - neutron::server
   - neutron::server::notifications
-  - neutron::agents::metadata
-  - neutron::agents::l3
-  - neutron::agents::dhcp
+  - neutron::plugins::ml2 #?
+  - neutron::agents::ml2::ovs #?
 
-neutron_ml2_classes:
+profile::neutron_compute:
+  - nova::network::neutron
+  - nova::compute::neutron
+  - neutron
   - neutron::plugins::ml2
   - neutron::agents::ml2::ovs
 
-nova_classes:
+profile::nova_api:
   - nova
-
-nova_neutron_classes:
-  - nova::network::neutron
-
-nova_control_classes:
+  - nova::network::neutron #?
   - nova::api
   - nova::conductor
   - nova::db::mysql
   - nova::keystone::auth
   - nova::scheduler
 
-nova_compute_classes:
+profile::nova_compute:
+  - nova
   - nova::compute
   - nova::compute::libvirt
 
-nova_neutron_compute_classes:
-  - nova::compute::neutron
+profile::rabbitmq:
+  - rabbitmq

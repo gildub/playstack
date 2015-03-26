@@ -1,0 +1,30 @@
+---
+:nodes:
+  :control1:
+    - infra
+    - controllers
+    - dashboard
+    - networker
+  :compute1:
+    - compute
+  :compute2:
+    - compute
+#  :aio:
+#    - infra
+#    - controllers
+#    - dashboard
+#    - networker
+#    - compute
+:include:
+  - ipa
+  - glance
+  - horizon
+  - keystone
+  - mysql
+  - neutron
+  - nova
+  - rabbitmq
+:ip:
+  :admin: ''
+  :internal: ''
+  :public: ''

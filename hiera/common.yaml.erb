@@ -1,0 +1,176 @@
+---
+glance::api::database_connection: "mysql://glance:<%= configatron.openstack.glance.password %>@<%= configatron.scenario.ip.internal %>/glance"
+glance::api::debug: <%= configatron.openstack.debug %>
+glance::api::host_uri: "http://<%= configatron.scenario.ip.public %>:5000"
+glance::api::identity_uri: "http://<%= configatron.scenario.ip.admin %>:35357/v2.0"
+glance::api::keystone_password: <%= configatron.openstack.glance.password %>
+glance::api::registry_host: "<%= configatron.scenario.ip.public %>"
+glance::api::verbose: <%= configatron.openstack.verbose %>
+
+glance::backend::file: <%= configatron.openstack.glance.backend.file %>
+
+glance::db::mysql::password: <%= configatron.openstack.glance.password %>
+glance::db::mysql::host: "<%= configatron.scenario.ip.internal %>"
+
+glance::keystone::auth::admin_address: "<%= configatron.scenario.ip.admin %>"
+glance::keystone::auth::internal_address: "<%= configatron.scenario.ip.internal %>"
+glance::keystone::auth::password: <%= configatron.openstack.glance.password %>
+glance::keystone::auth::public_address: "<%= configatron.scenario.ip.public %>"
+
+glance::registry::debug: <%= configatron.openstack.debug %>
+glance::registry::database_connection: "mysql://glance:<%= configatron.openstack.glance.password %>@<%= configatron.scenario.ip.internal %>/glance"
+glance::registry::host_uri: "http://<%= configatron.scenario.ip.public %>:5000"
+glance::registry::identity_uri: "http://<%= configatron.scenario.ip.admin %>:35357/v2.0"
+glance::registry::keystone_password: <%= configatron.openstack.glance.password %>
+glance::registry::verbose: <%= configatron.openstack.verbose %>
+
+#horizon::horizon_ca: horizon_ca
+#horizon::horizon_cert: horizon_cert
+#horizon::horizon_key: horizon_key
+#horizon::neutron_options: { 'enable_lb' => false,  'enable_firewall' => false }
+horizon::allowed_hosts: '*'
+horizon::compress_offline: false
+horizon::django_debug: false
+horizon::file_upload_temp_dir: '/var/tmp'
+horizon::hypervisor_options:
+  can_set_mount_point: false
+horizon::keystone_default_role: '_member_'
+horizon::keystone_url: "http://<%= configatron.scenario.ip.public %>:5000/v2.0"
+horizon::listen_ssl: <%= configatron.openstack.ssl %>
+horizon::neutron_options:
+  enable_lb: false
+  enable_firewall: false
+horizon::server_aliases: [ "<%= configatron.scenario.ip.public %>", "$::fqdn", "$::hostname", 'localhost' ]
+horizon::secret_key: <%= configatron.openstack.horizon.secret_key %>
+
+# Leave default (0.0.0.0)
+#keystone::admin_bind_host: "<%= configatron.scenario.ip.admin %>"
+keystone::admin_token: <%= configatron.openstack.admin.token %>
+keystone::database_connection: "mysql://keystone:<%= configatron.openstack.keystone.password %>@<%= configatron.scenario.ip.internal %>/keystone"
+keystone::debug: <%= configatron.openstack.debug %>
+keystone::enable_ssl: <%= configatron.openstack.ssl %>
+keystone::public_bind_host: "<%= configatron.scenario.ip.public %>"
+keystone::service_name: <%= configatron.openstack.keystone.service_name %>
+keystone::verbose: <%= configatron.openstack.verbose %>
+
+keystone::db::mysql::password: <%= configatron.openstack.keystone.password %>
+keystone::db::mysql::host: "<%= configatron.scenario.ip.internal %>"
+keystone::db::mysql::allowed_hosts: '%'
+
+keystone::endpoint::public_url: "http://<%= configatron.scenario.ip.public %>:5000"
+keystone::endpoint::admin_url: "http://<%= configatron.scenario.ip.admin %>:35357"
+keystone::endpoint::internal_url: "http://<%= configatron.scenario.ip.internal %>:5000"
+
+keystone::roles::admin::email: <%= configatron.openstack.admin.email %>
+keystone::roles::admin::password: <%= configatron.openstack.admin.password %>
+keystone::roles::admin::admin_tenant: admin
+
+keystone::wsgi::apache::ssl: <%= configatron.openstack.ssl %>
+
+mysql::server::root_password: <%= configatron.openstack.dbms.root.password %>
+mysql::server::override_options:
+  mysqld:
+    bind-address: 0.0.0.0
+#    bind-address: "<%= configatron.scenario.ip.internal %>"
+    default_storage_engine: InnoDB
+
+neutron::allow_overlapping_ips: true
+neutron::bind_host: "<%= configatron.scenario.ip.public %>"
+neutron::core_plugin: neutron.plugins.ml2.plugin.Ml2Plugin
+neutron::debug: <%= configatron.openstack.debug %>
+neutron::rabbit_host: "<%= configatron.scenario.ip.internal %>"
+neutron::rabbit_password: <%= configatron.openstack.rabbitmq.password %>
+neutron::rabbit_user: <%= configatron.openstack.rabbitmq.user %>
+neutron::service_plugins:
+  - neutron.services.l3_router.l3_router_plugin.L3RouterPlugin
+neutron::verbose: <%= configatron.openstack.verbose %>
+
+neutron::agents::metadata::auth_password: <%= configatron.openstack.neutron.password %>
+neutron::agents::metadata::auth_url: "http://<%= configatron.scenario.ip.admin %>:35357/v2.0"
+neutron::agents::metadata::metadata_ip: "<%= configatron.scenario.ip.public %>"
+neutron::agents::metadata::shared_secret: <%= configatron.openstack.neutron.metadata.shared_secret %>
+
+neutron::agents::ml2::ovs::bridge_uplinks: []
+neutron::agents::ml2::ovs::bridge_mappings: []
+neutron::agents::ml2::ovs::enable_tunneling: <%= configatron.openstack.neutron.agents.ml2.ovs.enable_tunneling %>
+neutron::agents::ml2::ovs::local_ip: "<%= configatron.openstack.neutron.agents.ml2.ovs.local_ip %>"
+neutron::agents::ml2::ovs::tunnel_types: <%= configatron.openstack.neutron.agents.ml2.ovs.tunnel_types %>
+neutron::agents::ml2::ovs::vxlan_udp_port: <%= configatron.openstack.neutron.agents.ml2.ovs.vxlan_udp_port %>
+neutron::agents::ml2::ovs::l2_population : <%= configatron.openstack.neutron.agents.ml2.ovs.l2_population %>
+
+neutron::db::mysql::host: "<%= configatron.scenario.ip.internal %>"
+neutron::db::mysql::password: <%= configatron.openstack.neutron.password %>
+
+neutron::keystone::auth::admin_address: "<%= configatron.scenario.ip.admin %>"
+neutron::keystone::auth::internal_address: "<%= configatron.scenario.ip.internal %>"
+neutron::keystone::auth::password: <%= configatron.openstack.neutron.password %>
+neutron::keystone::auth::public_address: "<%= configatron.scenario.ip.public %>"
+
+neutron::plugins::ml2::enable_security_group: <%= configatron.openstack.neutron.plugins.ml2.enable_security_group %>
+neutron::plugins::ml2::flat_networks: <%= configatron.openstack.neutron.plugins.ml2.flat_networks %>
+neutron::plugins::ml2::mechanism_drivers: <%= configatron.openstack.neutron.plugins.ml2.mechanism_drivers %>
+neutron::plugins::ml2::network_vlan_ranges: <%= configatron.openstack.neutron.plugins.ml2.network_vlan_ranges %>
+neutron::plugins::ml2::supported_pci_vendor_devs: <%= configatron.openstack.neutron.plugins.ml2.supported_pci_vendor_devs %>
+neutron::plugins::ml2::sriov_agent_required: <%= configatron.openstack.neutron.plugins.ml2.sriov_agent_required %>
+neutron::plugins::ml2::tenant_network_types: <%= configatron.openstack.neutron.plugins.ml2.tenant_network_types %>
+neutron::plugins::ml2::tunnel_id_ranges: <%= configatron.openstack.neutron.plugins.ml2.tunnel_id_ranges %>
+neutron::plugins::ml2::type_drivers: <%= configatron.openstack.neutron.plugins.ml2.type_drivers %>
+neutron::plugins::ml2::vni_ranges: <%= configatron.openstack.neutron.plugins.ml2.vni_ranges %>
+# neutron::plugins::ml2::vxlan_group:
+
+neutron::server::database_connection: "mysql://neutron:<%= configatron.openstack.neutron.password %>@<%= configatron.scenario.ip.internal %>/neutron"
+#neutron::server::auth_host: "<%= configatron.scenario.ip.internal %>"
+neutron::server::auth_password: <%= configatron.openstack.neutron.password %>
+neutron::server::host_uri: "http://<%= configatron.scenario.ip.public %>:5000"
+neutron::server::identity_uri: "http://<%= configatron.scenario.ip.admin %>:35357/v2.0"
+neutron::server::sync_db: true
+
+neutron::server::notifications::nova_admin_auth_url: "http://<%= configatron.scenario.ip.admin %>:35357/v2.0"
+neutron::server::notifications::nova_admin_password: <%= configatron.openstack.nova.password %>
+neutron::server::notifications::nova_admin_username: nova
+neutron::server::notifications::nova_url: "http://<%= configatron.scenario.ip.public %>:8774/v2"
+neutron::server::notifications::notify_nova_on_port_status_changes: true
+neutron::server::notifications::notify_nova_on_port_data_changes: true
+
+nova::database_connection: "mysql://nova:<%= configatron.openstack.nova.password %>@<%= configatron.scenario.ip.internal %>/nova"
+nova::debug: <%= configatron.openstack.debug %>
+nova::glance_api_servers: "<%= configatron.scenario.ip.public %>:9292"
+nova::rabbit_host: "<%= configatron.scenario.ip.internal %>"
+nova::rabbit_use_ssl: <%= configatron.openstack.ssl %>
+nova::rabbit_userid: <%= configatron.openstack.rabbitmq.user %>
+nova::rabbit_password: <%= configatron.openstack.rabbitmq.password %>
+nova::verbose: <%= configatron.openstack.verbose %>
+#nova::nova_public_key: $public_key
+#nova::nova_private_key: $private_key
+
+nova::api::admin_password: <%= configatron.openstack.nova.password %>
+#nova::api::api_bind_address: "<%= configatron.scenario.ip.public %>"
+nova::api::api_bind_address: 0.0.0.0
+nova::api::enabled: true
+nova::api::host_uri: "http://<%= configatron.scenario.ip.public %>:5000"
+nova::api::identity_uri: "http://<%= configatron.scenario.ip.admin %>:35357/v2.0"
+nova::api::metadata_listen: "<%= configatron.scenario.ip.public %>"
+nova::api::neutron_metadata_proxy_shared_secret: <%= configatron.openstack.neutron.metadata.shared_secret %>
+
+nova::compute::enabled: true
+nova::compute::libvirt::libvirt_virt_type: qemu
+
+nova::conductor::enabled: true
+
+nova::db::mysql::password: <%= configatron.openstack.nova.password %>
+nova::db::mysql::host: "<%= configatron.scenario.ip.internal %>"
+
+nova::keystone::auth::password: <%= configatron.openstack.nova.password %>
+nova::keystone::auth::public_address: "<%= configatron.scenario.ip.public %>"
+nova::keystone::auth::admin_address: "<%= configatron.scenario.ip.admin %>"
+nova::keystone::auth::internal_address: "<%= configatron.scenario.ip.internal %>"
+
+nova::network::neutron::neutron_admin_password: <%= configatron.openstack.neutron.password %>
+nova::network::neutron::neutron_url: "http://<%= configatron.scenario.ip.public %>:9696"
+nova::network::neutron::neutron_admin_auth_url: "http://<%= configatron.scenario.ip.public %>:35357/v2.0"
+#nova::network::neutron::vif_plugging_is_fatal: false
+#nova::network::neutron::vif_plugging_timeout: 0
+
+nova::scheduler::enabled: true
+
+rabbitmq::repos_ensure: false

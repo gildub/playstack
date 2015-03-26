@@ -1,42 +1,17 @@
 ---
-# IPs and passwords are provided at runtime
-:scenario:
-  :nodes:
-    :control1:
-    - infra
-    - control
-    - network
-    :compute1:
-    - compute
-    :compute2:
-    - compute
-    :aio:
-    - infra
-    - control
-    - network
-    - compute
-:os:
-  :include:
-  - ipa
-  - glance
-  - horizon
-  - keystone
-  - mysql
-  - neutron
-  - nova
-  - rabbitmq
-  :debug: false
-  :ssl: false
-  :verbose: true
-  :admin:
+:debug: false
+:ssl: false
+:verbose: true
+:admin:
     :email: admin@example.com
-  :glance:
+:glance:
     :backend:
       :file: "/var/lib/glance/images/"
-  :keystone:
+:keystone:
     :service_name: keystone
   #  :service_name: httpd
-  :neutron:
+:neutron:
+    :tunnel: vxlan
     :agents:
       :ml2:
         :ovs:
@@ -68,9 +43,5 @@
         :vni_ranges:
         - 10:100
 #        :vxlan_group: ''
-  :rabbitmq:
+:rabbitmq:
     :user: guest
-:ip:
-  :admin: ''
-  :internal: ''
-  :public: ''

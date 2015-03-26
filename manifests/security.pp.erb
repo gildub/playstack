@@ -1,0 +1,24 @@
+class { 'firewall':
+  ensure => running,
+}
+
+Service<||> -> Firewall<||>
+
+$rules = hiera('security::firewall')
+$defaults = { 'action' => 'accept' }
+
+create_resources(firewall, $rules, $defaults)
+
+$rc="export OS_USERNAME=admin
+export OS_TENANT_NAME=admin
+export OS_PASSWORD=<%= configatron.openstack.keystone.password %>
+export OS_AUTH_URL=http://<%= configatron.scenario.ip.public %>:5000/v2.0/
+export OS_REGION_NAME=RegionOne
+export PS1='[\\u@\\h \\W(keystone_admin)]\\$ '
+"
+
+file { "/root/keystonerc":
+  ensure  => 'present',
+  mode    => '0600',
+  content => $rc
+}

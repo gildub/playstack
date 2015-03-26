@@ -1,0 +1,18 @@
+---
+:infra:
+  - mysql
+  - rabbitmq
+:controllers:
+  - cinder_api
+  - glance_api
+  - keystone_api
+  - neutron_api
+  - nova_api
+  - swift_api
+:dashboard:
+  - horizon
+:networker:
+  - neutron_agents
+:compute:
+  - nova_compute
+  - neutron_compute
